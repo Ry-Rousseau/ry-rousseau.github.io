@@ -3,6 +3,8 @@ title: "Framing Detector with Longformer"
 tags: Project
 ---
 
+## Framing Detector with Transformer Encoder
+
 ## Table of Contents
 
 1. [Overview](#1-overview)
