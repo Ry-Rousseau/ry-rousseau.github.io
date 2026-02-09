@@ -3,26 +3,23 @@ title: "Framing Detector with Longformer"
 tags: Project
 ---
 
-## 15-Class Framing Detector with Longformer
-
----
-
 ## Table of Contents
 
 1. [Overview](#1-overview)
 2. [Training Data](#2-training-data)
    - [Gold Data: Human Annotations](#21-gold-data-human-annotations)
    - [Silver Data: LLM Annotations](#22-silver-data-llm-annotations)
-3. [Model Architecture Evolution](#3-model-architecture-evolution)
+3. [Model Architecture](#3-model-architecture-evolution)
    - [Topic Classifier: RoBERTa with Truncation](#31-topic-classifier-roberta-with-truncation)
-   - [Longformer for Full Document Classification](#32-longformer-for-full-document-classification)
+   - [Longformer Classifier](#32-longformer-for-full-document-classification)
 4. [Silver Training](#4-silver-training)
 5. [Gold Training](#5-gold-training)
 6. [Evaluation Metrics](#evaluation-metrics)
 7. [Appendix](#appendix)
    - [Future Directions](#future-directions)
    - [Tips and Tricks](#tips-and-tricks)
-   - [Experiments](#experiments)
+   - [Past Experiments](#experiments)
+
 ---
 
 ## 1. Overview
@@ -32,6 +29,7 @@ Media framing is the process by which communicators select specific aspects of a
 Card et al. (2015) operationalize framing not just as isolated keywords, but as "thematic sets" or "packages" of aligned ideas and assumptions.
 
 Based on the **Media Frames Corpus (MFC)** paper by **Card et al. (2015)**, which draws on the framing dimensions defined by **Boydstun et al. (2014)**, here is the corrected table with the specific descriptions intended by the authors:
+
 | Frame | Description (Card et al., 2015 / Boydstun et al., 2014) |
 | :--- | :--- |
 | **Economic** | The costs, benefits, or other financial implications of the issue. |
@@ -56,7 +54,7 @@ Existing methods to automate frame-detection suffer from several limitations:
 
 2) Context length. Past solutions are often designed for sentence-level classification, whereas frames develop through complex interplays across hundreds of words of text, and reference past signals from earlier in the same input. A longer context with appropriate attention handling is essential to pick-up these nuanced interactions. 
 
-3) Training data. Past papers rely on machine-generated classification data, rather than gold-standard human annotations, which can bake-in biases, without appropriately correcting them in fine-tuning. A lack of abundant human annotated data for frame detection remains a serious challenge for work in this area, and the encoding of human-backed reasoning into model weights requires careful correction with this constraint.
+3) Training data. Reliance on machine-generated classification data, rather than gold-standard human annotations, which can bake-in biases, poses another serious risk. A lack of abundant human annotated data for frame detection remains a serious challenge for work in this area, and the encoding of human-backed reasoning into model weights requires careful correction and deliberate fine-tuning.
 
 I sought to develop a lightweight transformer-based model which addresses these challenges, and would be useful for applied NLP research. The final model uses multi-label classification to detect the presence of each of the 15-frames in input text up to ~1600 words. It outperforms past GenAI approaches in classification accuracy on the Media Frames Corpus, while being 47 times smaller in model size (compared to mm-framing's Mistral-7B). 
 
@@ -68,7 +66,7 @@ I developed the project in its associated [repo](https://github.com/Ry-Rousseau/
 
 ### 2.1 Gold Data: Human Annotations
 
-The two best datasets for this task are: the 2015 Media Frames Corpus (MFC) and the 2023 SemEval Task 3 (sub-task 2). Accessibility for the MFC has been greatly reduced (as Lexis Nexis has paywalled document access), leaving about 21% of the original 14,481 articles available to me (via Lexis Uni). The SemEval source is open-access, after messaging the task organizers, and provides 516 additional articles. Together, these generate a gold-standard dataset of 2470 articles, combining labels from 19 trained annotators. 
+The two best datasets for this task are: the 2015 Media Frames Corpus (MFC) and the 2023 SemEval Task 3 (sub-task 2). Accessibility for the MFC has been greatly reduced (as Lexis Nexis has paywalled document access), leaving about 21% of the original 14,481 articles available to me (via Lexis Uni). The SemEval source is open-access, after messaging the task organizers, and provides 516 additional articles. Together, these generate a gold-standard dataset of 2,740 articles, combining labels from 19 trained annotators. 
 
 #### Media Frames Corpus (MFC)
 
@@ -127,11 +125,11 @@ Originally designed for competition model development, the SemEval data can be c
 
 ### 2.2 Silver Data: LLM Annotations
 
-    Given the insufficient number of gold training examples for a useful and accurate classifier, I rely on secondary machine-labelled data to build out the training run. 
+Given the insufficient number of gold training examples for a useful and accurate classifier, I rely on secondary machine-labelled data to build out the training run.
 
-    **Source:** `copenlu/mm-framing`
+**Source:** `copenlu/mm-framing`
 
-    This dataset from Arora et al. 2025 contains ~478,000 news articles with frame labels generated by an LLM - Mistral-7B-Instruct - using prompt engineering. It was cleaned to remove short length articles (<100 words) and non-standard frames. 378,000 examples were retained, spanning the period May 2023 to April 2024, covering 28 US based news agencies, spanning the political spectrum. Data was hydrated with the python library `newsplease` from base urls.
+This dataset from Arora et al. 2025 contains ~478,000 news articles with frame labels generated by an LLM - Mistral-7B-Instruct - using prompt engineering. It was cleaned to remove short length articles (<100 words) and non-standard frames. 378,000 examples were retained, spanning the period May 2023 to April 2024, covering 28 US based news agencies, spanning the political spectrum. Data was hydrated with the python library `newsplease` from base urls.
 
 **Label Generation Method:**
 - Model: Mistral-7B-Instruct-v0.3
@@ -173,13 +171,13 @@ Finally, I consolidated additional metadata provided by the Mistral model, trans
 
 ---
 
-3. [Model Architecture](#3-model-architecture-evolution)
+## 3. Model Architecture
 
 ### 3.1 Topic Classifier: RoBERTa with Truncation
 
 I found that encoder transformer models (BERT and Longformer) perform better at frame classification after being provided with relevant meta-data. Without any model-level changes, adding the article topic to the beginning of the input tensor bakes in a sizable improvement in test accuracy. Topic injection activates internal weights designed for domain-specific reasoning, generating a +2.7% gain in Micro F1 performance, and represents an easy feature-level improvement. Certain frames experienced greater performance gains over others, largely based on training data availability, but all saw increased performance. 
 
-To leverage this finding, I trained a lightweight roBERTa model to classify unseen text into one of the 19 empirical topics derived from the the silver training data. Comparing performance to alternatives (base BERT and Distill BERT), RoBERTa achieved the highest validation accuracy at 76% on 64,000 examples, which was sufficient for the task of assisting the downstream framing classifier.
+To leverage this finding, I trained a lightweight roBERTa model to classify unseen text into one of the 19 empirical topics derived from the silver training data. Comparing performance to alternatives (base BERT and Distill BERT), RoBERTa achieved the highest validation accuracy at 76% on 64,000 examples, which was sufficient for the task of assisting the downstream framing classifier.
 
 **Head+Tail truncation strategy**
 - Head: First 320 tokens (captures title and introduction)
@@ -192,7 +190,7 @@ TOPIC:{topic}
 {title}
 {article_text}
 ```
-Topic injects implements a 'soft' mixture of experts approach, giving prior context without the overhead of running multiple 'domain expert' models. 
+Topic injection implements a 'soft' mixture of experts approach, giving prior context without the overhead of running multiple 'domain expert' models. 
 
 ### 3.2 Longformer for Full Document Classification
 
@@ -207,8 +205,9 @@ To produce the framing classifier, I evaluate a range of models, combining featu
 
 ## 4. Silver Training
 
-I trained the `allenai/longformer-base-4096` on the full silver training data, keeping 10% for validation and model selection, finishing 4 epochs over 72 hours (on an NVIDIA A40 wit 48GB VRAM). I opted for a  binary cross-entropy loss function weighted on the distributions of frames in the mistral labels, to incentivize the model to pay equal attention to all frames and disincentivize prediction on the dominant frames. Post-training threshold optimizations on the classification layer further addressed this class imbalance issue.  
-Finally, I opted for 4 epochs, despite my observation that validation scores would have continued to climb marginally, so as to avoid overfitting on this less reliable data. 
+I trained `allenai/longformer-base-4096` on the silver dataset for 4 epochs over 72 hours using an NVIDIA A40 (48GB VRAM), holding out 10% for validation and model selection. To address class imbalance, I used binary cross-entropy loss weighted by the inverse frequency of frames in the Mistral-generated labels. This encouraged the model to attend equally to all frames rather than over-predicting dominant categories. I further mitigated imbalance through post-training threshold optimization on the classification layer.
+
+I stopped training at 4 epochs despite observing that validation scores would continue improving marginally, as I wanted to avoid overfitting on the less reliable machine-generated labels.
 
 | Parameter | Value |
 |-----------|-------|
@@ -274,7 +273,7 @@ I fine-tuned the silver model on the gold training set from MFC and SemEval. Thi
 - Improved Lexis-Nexis access to increase scope of gold training data
 - Calibration analysis of predicted probabilities, using classification layer to generate continuous measure of frames (e.g. 60% economic vs. 20% policy prescription)
 - Semi-supervised refinement using gold model to clean silver data
-- Ensemble of Longformer with domain experts to eek out greater domain performance
+- Ensemble of Longformer with domain experts to eke out greater domain performance
 - Temporal analysis of how frames shift on same topics over time
 - Implement knowledge distillation from longformer into lighter weight models, measuring performance trade-off
 
@@ -282,7 +281,7 @@ I fine-tuned the silver model on the gold training set from MFC and SemEval. Thi
 
 Running experiments on smaller models usually scaled very well to larger models in the same architecture. This saved computation and made it easier to predict improvements without running on the full training set (and renting GPUs to do so).
 
-I used RunPod's A40 GPU for the full silver training run, it took aproximately 72 hours. I finished with the gold run on my local RTX 4070Ti with 16GB VRAM, optimizing with gradient accumulation and smaller batch size, completing the focal loss grid search and final train over 12 hours.
+I used RunPod's A40 GPU for the full silver training run, it took approximately 72 hours. I finished with the gold run on my local RTX 4070Ti with 16GB VRAM, optimizing with gradient accumulation and smaller batch size, completing the focal loss grid search and final train over 12 hours.
 
 Using weights and biases to track training runs proved immensely helpful and greatly eased evaluation between experiments.
 
@@ -290,11 +289,11 @@ Using weights and biases to track training runs proved immensely helpful and gre
 
 As a glimpse into underlying reasoning, in certain edge cases, the topic classification model would perform poorly, such as in classifying stories about wildlife hunting as 'crime'. However, on aggregate, these inaccuracies were not found to significantly disrupt downstream model performance. Alternative topic classifiers could be used to optimize this stage and provide more robust classification, but might not affect end performance strongly. 
 
-For the longformer classifier, ideally, a full attention long-context model would be used, as the sliding window of local attention in the sparse attention architecture is non-ideal. However, these a very expensive to run, and grow computation exponentionally. This represents a strong challenge with masked language modelling architectures.
+For the longformer classifier, ideally, a full attention long-context model would be used, as the sliding window of local attention in the sparse attention architecture is non-ideal. However, these are very expensive to run, and grow computation exponentially. This represents a strong challenge with masked language modelling architectures.
 
 Another option I considered was stringing together multiple BERT models in a hierarchical chain. I thought this was excessively complex and failed to integrate the dynamic attention modelling architecture gained by the Longformer model, but it may prove useful if paired with a smart chunking method, breaking a long input into relevant sub-inputs for each BERT.
 
-Finally, owning to a key finding in the winning SemEval 2023 Task 3 sub-task 2 paper, I attempted to run masked language modelling pre-training on the base longformer. This would have taken >48 hours, so I opted not to continue, but has been shown to improve performance on related tasks by 3-4%.
+Finally, owing to a key finding in the winning SemEval 2023 Task 3 sub-task 2 paper, I attempted to run masked language modelling pre-training on the base longformer. This would have taken >48 hours, so I opted not to continue, but has been shown to improve performance on related tasks by 3-4%.
 
 This project remains in its initial version, and will be iterated on in future. I aim to make the model pipeline and predictions more accessible.
 
