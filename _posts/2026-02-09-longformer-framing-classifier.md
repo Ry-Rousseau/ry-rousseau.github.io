@@ -3,7 +3,7 @@ title: "Framing Detector with Longformer"
 tags: Project
 ---
 
-## Framing Detector with Transformer Encoder
+## Building a 15-Class Media Frame Detector with Longformer
 
 ## Table of Contents
 
