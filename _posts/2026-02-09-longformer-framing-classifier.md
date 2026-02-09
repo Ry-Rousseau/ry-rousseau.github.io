@@ -30,7 +30,7 @@ Media framing is the process by which communicators select specific aspects of a
 
 Card et al. (2015) operationalize framing not just as isolated keywords, but as "thematic sets" or "packages" of aligned ideas and assumptions.
 
-Based on the **Media Frames Corpus (MFC)** paper by **Card et al. (2015)**, which draws on the framing dimensions defined by **Boydstun et al. (2014)**, here is the corrected table with the specific descriptions intended by the authors:
+Based on the **Media Frames Corpus (MFC)** paper by Card et al. (2015), which draws on the framing dimensions defined by Boydstun et al. (2014), here is the corrected table with the specific descriptions intended by the authors:
 
 | Frame | Description (Card et al., 2015 / Boydstun et al., 2014) |
 | :--- | :--- |
@@ -58,7 +58,7 @@ Existing methods to automate frame-detection suffer from several limitations:
 
 3) Training data. Reliance on machine-generated classification data, rather than gold-standard human annotations, which can bake-in biases, poses another serious risk. A lack of abundant human annotated data for frame detection remains a serious challenge for work in this area, and the encoding of human-backed reasoning into model weights requires careful correction and deliberate fine-tuning.
 
-I sought to develop a lightweight transformer-based model which addresses these challenges, and would be useful for applied NLP research. The final model uses multi-label classification to detect the presence of each of the 15-frames in input text up to ~1600 words. It outperforms past GenAI approaches in classification accuracy on the Media Frames Corpus, while being 47 times smaller in model size (compared to mm-framing's Mistral-7B). 
+I sought to develop a lightweight transformer-based model which addresses these challenges, and would be useful for applied NLP research. The final model uses multi-label classification to detect the presence of each of the 15-frames in input text up to ~1600 words. It outperforms past GenAI approaches in classification accuracy on the Media Frames Corpus, while being 47 times smaller in model size (compared to mm-framing's Mistral-7B from [Arora et al 2025](https://arxiv.org/pdf/2503.20960)). 
 
 I developed the project in its associated [repo](https://github.com/Ry-Rousseau/frame-delta) and uploaded my final model to HuggingFace. The current version (as of writing) may be iterated upon in future, as I optimize further on the available data and test new architectures, which will reflect in future model updates. 
 
@@ -265,6 +265,12 @@ I fine-tuned the silver model on the gold training set from MFC and SemEval. Thi
 | Public Opinion | 0.51 | 0.77 | 0.61 | 81 |
 | Political | 0.70 | 0.94 | 0.81 | 134 |
 | External Regulation | 0.92 | 0.41 | 0.57 | 29 |
+
+---
+
+## Some Takeaways
+
+Building reliable models for specific NLP tasks, especially in hard-to-verify rhetorical analysis tasks, is becoming increasingly possible with the abundance of data labelled by generative models. This data enables the learning of approximate identification patterns, but is so far seen to be insufficient for production-level modelling, as many biases and relics of unstructured training data skew generative model biases in unmeasurable ways. Gold fine-tuning on curated human-annotated data remains essential to deploy frame classifiers at scale, and the process of balancing data availability with quality is an ongoing area of research.
 
 ---
 
